@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eorzea Long-Haul Board — FFXIV Collection Tracker</title>
+<meta name="description" content="Offline, single-file FFXIV collection tracker: mounts, minions, barding and relics with method tags, weekly focus and a celebration log.">
+<style>
+  :root {
+    --bg: #10141c;
+    --panel: #1a2130;
+    --panel-2: #212a3d;
+    --ink: #e8ecf5;
+    --muted: #9aa7bd;
+    --line: #2d3950;
+    --gold: #e0b84e;
+    --gold-soft: #b99536;
+    --sky: #6ec3e8;
+    --violet: #a08bf5;
+    --teal: #4fc3a1;
+    --red: #e06c6c;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: radial-gradient(1200px 500px at 50% -10%, #223052 0%, var(--bg) 60%);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+  header.site {
+    text-align: center;
+    padding: 28px 16px 8px;
+  }
+  header.site h1 {
+    margin: 0;
+    font-size: 1.6rem;
+    letter-spacing: 0.04em;
+    color: var(--gold);
+  }
+  header.site p.sub { margin: 6px 0 0; color: var(--muted); font-size: 0.9rem; }
+  main { max-width: 880px; margin: 0 auto; padding: 12px 16px 80px; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+
+  /* Overall progress */
+  #overallCard .bar-wrap { margin-top: 8px; }
+  .bar {
+    height: 12px;
+    background: var(--panel-2);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .bar > div {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold), var(--gold-soft));
+    border-radius: 999px;
+    transition: width .3s ease;
+  }
+  .bar-label { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--muted); margin-top: 5px; }
+
+  /* Weekly focus */
+  #focusCard h2, #logCard h2, section.board-view h2 {
+    margin: 0 0 10px;
+    font-size: 1.05rem;
+    color: var(--sky);
+    letter-spacing: 0.03em;
+  }
+  #focusBody { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  #focusItem { flex: 1 1 260px; }
+  #focusName { font-weight: 600; font-size: 1.05rem; }
+  #focusMeta { color: var(--muted); font-size: 0.85rem; margin-top: 3px; }
+  .btn {
+    background: var(--panel-2);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .btn:hover { border-color: var(--gold); }
+  .btn.gold { background: var(--gold); color: #1a1a10; border-color: var(--gold); font-weight: 600; }
+
+  /* Tabs */
+  nav.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0; }
+  nav.tabs button {
+    flex: 1 1 140px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--muted);
+    padding: 9px 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  nav.tabs button.active { color: var(--gold); border-color: var(--gold-soft); background: var(--panel-2); font-weight: 600; }
+  nav.tabs button .minipct { display: block; font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+
+  /* Add form */
+  .addrow { display: flex; gap: 8px; flex-wrap: wrap; }
+  .addrow input[type="text"] { flex: 1 1 220px; }
+  input[type="text"], select {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--ink);
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    min-width: 0;
+  }
+  input[type="text"]::placeholder { color: #6d7c96; }
+
+  /* Item rows */
+  ul.items { list-style: none; margin: 12px 0 0; padding: 0; }
+  li.item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 9px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background: var(--panel-2);
+  }
+  li.item.done { opacity: 0.65; }
+  li.item.done .name { text-decoration: line-through; text-decoration-color: var(--gold); }
+  li.item.focus { border-color: var(--gold-soft); box-shadow: 0 0 0 1px var(--gold-soft); }
+  .name { flex: 1 1 180px; font-weight: 500; }
+  .tag {
+    font-size: 0.72rem;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+  .tag-duty { color: var(--violet); border-color: var(--violet); }
+  .tag-vendor { color: var(--teal); border-color: var(--teal); }
+  .tag-ground { color: var(--sky); border-color: var(--sky); }
+  .detail { flex-basis: 100%; color: var(--muted); font-size: 0.8rem; padding-left: 2px; }
+  .chip { cursor: pointer; border-radius: 999px; padding: 4px 10px; font-size: 0.75rem; border: 1px solid transparent; }
+  .chip-todo { background: none; color: var(--muted); border-color: var(--line); }
+  .chip-working { background: #3d3417; color: var(--gold); border-color: var(--gold-soft); }
+  .chip-done { background: #1c3a2d; color: var(--teal); border-color: var(--teal); }
+  .del { background: none; border: none; color: var(--red); cursor: pointer; font-size: 0.9rem; padding: 4px 6px; }
+
+  /* Log */
+  ul.log { list-style: none; margin: 8px 0 0; padding: 0; }
+  ul.log li { padding: 7px 4px; border-bottom: 1px solid var(--line); font-size: 0.88rem; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  ul.log li:last-child { border-bottom: none; }
+  ul.log .when { color: var(--muted); font-size: 0.8rem; }
+  .empty { color: var(--muted); font-size: 0.85rem; font-style: italic; }
+
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
+  .note { color: var(--muted); font-size: 0.8rem; text-align: center; margin-top: 14px; }
+
+  .stats-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 0.85rem; color: var(--muted); }
+  .stats-row b { color: var(--ink); }
+
+  .burst { position: fixed; top: 18px; left: 0; right: 0; text-align: center; pointer-events: none; font-size: 1.3rem; z-index: 50; opacity: 0; transition: opacity .4s ease; }
+  .burst.show { opacity: 1; }
+
+  @media (max-width: 540px) {
+    header.site h1 { font-size: 1.25rem; }
+    .stats-row { gap: 10px; }
+  }
+</style>
+</head>
+<body>
+<div id="burst" class="burst" aria-live="polite"></div>
+<header class="site">
+  <h1>&#9878; Eorzea Long-Haul Board</h1>
+  <p class="sub">Manual checklists for mounts, minions, barding &amp; relics. Local, offline, no logins.</p>
+</header>
+<main>
+  <section id="overallCard" class="card" aria-label="Overall progress">
+    <h2 style="margin:0 0 10px; font-size:1.05rem; color: var(--sky);">Overall Progress</h2>
+    <div class="bar-wrap">
+      <div class="bar"><div id="overallBar" style="width:0%"></div></div>
+      <div class="bar-label"><span id="overallCount">0 of 0 collected</span><span id="overallPct">0%</span></div>
+    </div>
+    <div class="stats-row" id="overallStats"></div>
+  </section>
+
+  <section id="focusCard" class="card" aria-label="Weekly focus">
+    <h2>Weekly Focus</h2>
+    <div id="focusBody">
+      <div id="focusItem">
+        <div id="focusName" class="empty">Loading…</div>
+        <div id="focusMeta"></div>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button id="rerollBtn" class="btn" title="Swap this week's pick">Reroll</button>
+        <button id="pickBtn" class="btn" title="Choose a specific item">Pick for me</button>
+      </div>
+    </div>
+    <select id="pickSelect" style="display:none; margin-top:10px; width:100%;"></select>
+  </section>
+
+  <nav class="tabs" id="tabs" aria-label="Boards"></nav>
+  <section class="board-view card">
+    <h2 id="boardTitle">Mounts</h2>
+    <div class="bar"><div id="boardBar" style="width:0%"></div></div>
+    <div class="bar-label"><span id="boardCount"></span><span id="boardPct"></span></div>
+
+    <form id="addForm" class="addrow" style="margin-top:12px;">
+      <input type="text" id="itemName" placeholder="Add an item (e.g. Firebird)" maxlength="80" required>
+      <select id="itemMethod">
+        <option value="duty">Duty (trial / dungeon / raid)</option>
+        <option value="vendor">Vendor (purchase)</option>
+        <option value="ground">Ground stage (FATE / world / gathering)</option>
+      </select>
+      <input type="text" id="itemDetail" placeholder="Where? (optional)" maxlength="120">
+      <button type="submit" class="btn gold">Add</button>
+    </form>
+
+    <ul class="items" id="itemList"></ul>
+  </section>
+
+  <section id="logCard" class="card" aria-label="Celebration log">
+    <h2>Celebration Log</h2>
+    <div id="logBody"><p class="empty">Nothing yet. When a mount finally lands, it goes here.</p></div>
+  </section>
+
+  <div class="toolbar">
+    <button id="exportBtn" class="btn">Export data</button>
+    <button id="importBtn" class="btn">Import data</button>
+    <button id="resetBtn" class="btn" style="color: var(--red);">Reset board</button>
+  </div>
+  <p class="note">Data lives only in this browser (localStorage). Export before clearing browser data.<br>
+  Fan-made, unofficial tool. Final Fantasy XIV is a trademark of Square Enix Holdings Co., Ltd.</p>
+</main>
+
+<script>
+"use strict";
+
+const STORAGE_KEY = "ffxiv-collection-board-v1";
+const STATUS_FLOW = ["todo", "working", "done"];
+const STATUS_LABELS = { todo: "Not started", working: "Working on it", done: "Obtained" };
+const METHOD_LABELS = { duty: "Duty", vendor: "Vendor", ground: "Ground stage" };
+const BOARDS = ["mounts", "minions", "barding", "relics"];
+const BOARD_LABELS = { mounts: "Mounts", minions: "Minions", barding: "Barding", relics: "Relics" };
+const BOARD_HEADER = {
+  mounts: "Mounts",
+  minions: "Minions",
+  barding: "Barding (chocobo attire)",
+  relics: "Relic quest milestones"
+};
+
+/* ---------- Pure logic (unit-tested) ---------- */
+
+function normalizeStatus(s) {
+  return STATUS_FLOW.indexOf(s) !== -1 ? s : "todo";
+}
+
+function nextStatus(s) {
+  const i = STATUS_FLOW.indexOf(normalizeStatus(s));
+  return STATUS_FLOW[(i + 1) % STATUS_FLOW.length];
+}
+
+function computeProgress(items) {
+  const total = items.length;
+  let done = 0, working = 0;
+  for (const it of items) {
+    const st = normalizeStatus(it.status);
+    if (st === "done") done++;
+    else if (st === "working") working++;
+  }
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+  return { total, done, working, pct };
+}
+
+function computeBoardProgresses(items) {
+  const out = {};
+  for (const b of BOARDS) out[b] = computeProgress(items.filter(it => it.board === b));
+  return out;
+}
+
+function weekKeyOf(date) {
+  const d = typeof date === "string" ? new Date(date) : date;
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7; // Mon=1..Sun=7
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((t - yearStart) / 86400000 + 1) / 7);
+  return t.getUTCFullYear() + "-W" + String(week).padStart(2, "0");
+}
+
+function pickFocus(items, rng) {
+  const candidates = items.filter(it => normalizeStatus(it.status) !== "done");
+  if (candidates.length === 0) return null;
+  const roll = typeof rng === "function" ? rng() : Math.random();
+  return candidates[Math.floor(roll * candidates.length) % candidates.length];
+}
+
+function makeLogEntry(item, isoDate) {
+  return {
+    id: item.id,
+    name: item.name,
+    board: item.board,
+    method: item.method,
+    date: isoDate || new Date().toISOString()
+  };
+}
+
+function validateState(state) {
+  if (!state || typeof state !== "object") return false;
+  if (!Array.isArray(state.items) || !Array.isArray(state.log)) return false;
+  for (const it of state.items) {
+    if (!it || typeof it.id !== "string" || typeof it.name !== "string") return false;
+    if (BOARDS.indexOf(it.board) === -1) return false;
+    normalizeStatus(it.status);
+  }
+  if (state.focusState && typeof state.focusState !== "object") return false;
+  return true;
+}
+
+/* ---------- Seed data ---------- */
+
+function uid() {
+  return "i" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function seedItems() {
+  const raw = [
+    /* mounts */
+    ["mounts", "Firebird", "duty", "The Minstrel's Ballad: Ultima's Bane"],
+    ["mounts", "Aithon", "duty", "The Bowl of Embers (Extreme), whorl-whistle farm"],
+    ["mounts", "Boreas", "duty", "The Akh Afah Amphitheatre (Extreme)"],
+    ["mounts", "Air Force", "duty", "Sigmascape V4.0 (Savage)"],
+    ["mounts", "Alkonost", "vendor", "Nesvaaz, Radz-at-Han — 3 Resplendent Feathers"],
+    ["mounts", "Adamantoise", "vendor", "Gold Saucer Attendant — 200,000 MGP"],
+    ["mounts", "Fat Chocobo", "vendor", "Gold Saucer Attendant — 200,000 MGP"],
+    ["mounts", "Sleipnir", "vendor", "Gold Saucer Attendant — MGP exchange"],
+    ["mounts", "Behemoth", "vendor", "Jonathas, Old Gridania — 6 Achievement Certificates"],
+    ["mounts", "Bomb Palanquin", "vendor", "Kobold vendor — Trusted (120,000 gil)"],
+    ["mounts", "Xanthos", "ground", "FATE: A Behemoth Duty (The Peat Pors, Thanalan)"],
+    ["mounts", "Unicorn", "ground", "FATE questline: A Song of Bards and Bosses (300 unique FATEs)"],
+    ["mounts", "Cavalry Drake", "vendor", "Amalj'aa vendor — Trusted (120,000 gil)"],
+    ["mounts", "Cavalry Elbst", "vendor", "Sahagin vendor — Trusted (120,000 gil)"],
+
+    /* minions */
+    ["minions", "Black Coeurl", "vendor", "Minion Trader, Gold Saucer — 20,000 MGP"],
+    ["minions", "Zu Hatchling", "vendor", "Minion Trader, Gold Saucer — 10,000 MGP"],
+    ["minions", "Heavy Hatchling", "vendor", "Minion Trader, Gold Saucer — 20,000 MGP"],
+    ["minions", "Water Imp", "vendor", "Minion Trader, Gold Saucer — 10,000 MGP"],
+    ["minions", "Piggy", "vendor", "Minion Trader, Gold Saucer — 30,000 MGP"],
+    ["minions", "Unlucky Rabbit", "vendor", "Minion Trader, Gold Saucer — 30,000 MGP"],
+    ["minions", "Wind-up Nero tol Scaeva", "vendor", "Minion Trader, Gold Saucer — 30,000 MGP"],
+    ["minions", "Mama Automaton", "vendor", "Minion Trader, Gold Saucer — 30,000 MGP"],
+    ["minions", "Cactuar Cutting", "ground", "Gathering nodes / market board grind"],
+    ["minions", "Wind-up Odin", "ground", "FATE drop during Steel Reign (Fheldyn)"],
+
+    /* barding */
+    ["barding", "Gambler Barding", "vendor", "Gold Saucer — 20,000 MGP"],
+    ["barding", "Mandervillian Barding", "vendor", "Gold Saucer — 150,000 MGP"],
+    ["barding", "Ishgardian Barding", "vendor", "Ardolain, Foundation — 350 Centurio Seals"],
+    ["barding", "Hingan Barding", "vendor", "Eschina, Rhalgr's Reach — 4 Veteran's Clan Mark Logs"],
+    ["barding", "Round Table Barding", "vendor", "Bertana, Idyllshire — 15 Heavens' War Helm Fragments"],
+    ["barding", "Wolf Barding", "vendor", "Crystal Quartermaster, Wolves' Den Pier — 1,000 Trophy Crystals"],
+    ["barding", "Black Mage Barding", "ground", "Jonathas, Old Gridania — 3 Achievement Certificates"],
+    ["barding", "Chocobo Raincoat", "vendor", "Scrip Exchange — 800 Gatherers' Scrips"],
+    ["barding", "Sleipnir Barding", "ground", "Revenant's Toll — Odin's Mantle exchange (5 mantles)"],
+    ["barding", "Ixion Barding", "ground", "Rhalgr's Reach — 5 Ixion Horns (FATE Ixion)"],
+
+    /* relics */
+    ["relics", "Zeta relic — ARR finale", "duty", "Nexus to Zeta chain: dungeons, quartz, light farm"],
+    ["relics", "Anima relic — Fomalhaut", "duty", "HW chain: Aether Oils, Bensonite, a cluster of duties"],
+    ["relics", "Eureka relic — Woad Warrior", "ground", "Eureka Anemos through Hydatos stage monsters"],
+    ["relics", "Resistance relic — Genji", "ground", "Bozja: memories from skirmishes and CEs"],
+    ["relics", "Manderville relic — Mechanical", "duty", "EW Manderville chain: regular duties + treasure"],
+    ["relics", "Dawntrail relic — Aetherial stage", "duty", "New DT relic stages: dungeons and trials"]
+  ];
+  return raw.map(r => ({
+    id: uid(),
+    board: r[0],
+    name: r[1],
+    method: r[2],
+    status: "todo",
+    detail: r[3]
+  }));
+}
+
+function freshState() {
+  return { version: 1, items: seedItems(), log: [], focusState: { week: weekKeyOf(new Date()), id: null } };
+}
+
+/* ---------- Persistence ---------- */
+
+function loadState() {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!validateState(parsed)) return null;
+    for (const it of parsed.items) it.status = normalizeStatus(it.status);
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveState(state) {
+  if (typeof localStorage === "undefined") return;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* storage full or blocked */ }
+}
+
+/* ---------- UI ---------- */
+
+let state = loadState() || freshState();
+let activeBoard = "mounts";
+let focusPick = null; // item id or null
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function itemById(id) {
+  for (const it of state.items) if (it.id === id) return it;
+  return null;
+}
+
+function logBodyHtml(entries) {
+  if (entries.length === 0) return '<p class="empty">Nothing yet. When a mount finally lands, it goes here.</p>';
+  const rows = entries.map(e => {
+    const d = new Date(e.date);
+    const when = isNaN(d) ? e.date : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    return '<li><span>&#127881; <b>' + escapeHtml(e.name) + '</b> <span class="tag tag-' + escapeHtml(e.method) + '" data-tested>' + METHOD_LABELS[e.method] + '</span><br><span class="when">' + BOARD_LABELS[e.board] + "</span></span><span class=\"when\">" + when + "</span></li>";
+  });
+  return '<ul class="log">' + rows.join("") + "</ul>";
+}
+
+function render() {
+  const progresses = computeBoardProgresses(state.items);
+  const all = computeProgress(state.items);
+
+  const bar = document.getElementById("overallBar");
+  bar.style.width = all.pct + "%";
+  document.getElementById("overallPct").textContent = all.pct + "%";
+  document.getElementById("overallCount").textContent = all.done + " of " + all.total + " collected";
+  document.getElementById("overallStats").innerHTML =
+    BOARDS.map(b => "<span>" + BOARD_LABELS[b] + " <b>" + progresses[b].done + "/" + progresses[b].total + "</b></span>").join("");
+
+  renderTabs(progresses);
+  renderTabsButtonsActive();
+  renderBoard();
+  renderFocus(all);
+  document.getElementById("logBody").innerHTML = logBodyHtml(state.log);
+}
+
+function renderTabs(progresses) {
+  const tabs = document.getElementById("tabs");
+  tabs.innerHTML = "";
+  for (const b of BOARDS) {
+    const btn = document.createElement("button");
+    btn.className = b === activeBoard ? "active" : "";
+    btn.dataset.board = b;
+    btn.innerHTML = escapeHtml(BOARD_LABELS[b]) + ' <span class="minipct">' + progresses[b].pct + '%</span>';
+    btn.addEventListener("click", () => { activeBoard = b; render(); });
+    tabs.appendChild(btn);
+  }
+}
+
+function renderTabsButtonsActive() { /* handled in renderTabs */ }
+
+function renderBoard() {
+  document.getElementById("boardTitle").textContent = BOARD_HEADER[activeBoard];
+  const p = computeProgress(state.items.filter(it => it.board === activeBoard));
+  document.getElementById("boardBar").style.width = p.pct + "%";
+  document.getElementById("boardPct").textContent = p.pct + "%";
+  document.getElementById("boardCount").textContent = p.done + " of " + p.total + " obtained";
+
+  const list = document.getElementById("itemList");
+  const boardItems = state.items.filter(it => it.board === activeBoard);
+  if (boardItems.length === 0) {
+    list.innerHTML = '<li class="empty" style="border:none;background:none;">This board is empty. Add your first item above.</li>';
+    return;
+  }
+  list.innerHTML = "";
+  for (const it of boardItems) {
+    const li = document.createElement("li");
+    li.className = "item" + (it.status === "done" ? " done" : "") + (focusPick === it.id ? " focus" : "");
+    li.dataset.id = it.id;
+    li.innerHTML =
+      '<span class="name">' + escapeHtml(it.name) + "</span>" +
+      '<span class="tag tag-' + escapeHtml(it.method) + '">' + METHOD_LABELS[it.method] + "</span>" +
+      '<button class="chip chip-' + it.status + '" data-action="chip">' + STATUS_LABELS[it.status] + "</button>" +
+      '<button class="del" data-action="del" title="Remove item">&times;</button>' +
+      (it.detail ? '<span class="detail">' + escapeHtml(it.detail) + "</span>" : "");
+    li.querySelector('[data-action="chip"]').addEventListener("click", () => cycleStatus(it.id));
+    li.querySelector('[data-action="del"]').addEventListener("click", () => deleteItem(it.id));
+    list.appendChild(li);
+  }
+}
+
+function renderFocus() {
+  const key = weekKeyOf(new Date());
+  if (!state.focusState || state.focusState.week !== key) {
+    state.focusState = { week: key, id: null };
+  }
+  let focus = state.focusState.id ? itemById(state.focusState.id) : null;
+  if (!focus || focus.status === "done") {
+    focus = pickFocus(state.items);
+    state.focusState.id = focus ? focus.id : null;
+    saveState(state);
+  }
+  const nameEl = document.getElementById("focusName");
+  const metaEl = document.getElementById("focusMeta");
+  if (!focus) {
+    nameEl.textContent = "All done — nothing left to focus on!";
+    nameEl.className = "";
+    metaEl.textContent = "Take a bow, Warrior of Completion.";
+    return;
+  }
+  nameEl.textContent = focus.name;
+  nameEl.className = "name";
+  metaEl.innerHTML = BOARD_LABELS[focus.board] + " &#183; " + METHOD_LABELS[focus.method] + (focus.detail ? " &#183; " + escapeHtml(focus.detail) : "");
+}
+
+function cycleStatus(id) {
+  const it = itemById(id);
+  if (!it) return;
+  const before = it.status;
+  it.status = nextStatus(before);
+  if (it.status === "done" && before !== "done") {
+    state.log.unshift(makeLogEntry(it));
+    showBurst("\u{1F389} " + it.name + " obtained! \u{1F389}");
+    if (state.focusState && state.focusState.id === id) state.focusState.id = null;
+  } else if (before === "done" && it.status !== "done") {
+    state.log = state.log.filter(e => e.id !== id);
+  }
+  saveState(state);
+  render();
+}
+
+function deleteItem(id) {
+  state.items = state.items.filter(it => it.id !== id);
+  state.log = state.log.filter(e => e.id !== id);
+  if (state.focusState && state.focusState.id === id) state.focusState.id = null;
+  saveState(state);
+  render();
+}
+
+function showBurst(text) {
+  const el = document.getElementById("burst");
+  el.textContent = text;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2600);
+}
+
+function init() {
+  document.getElementById("addForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const nameEl = document.getElementById("itemName");
+    const methodEl = document.getElementById("itemMethod");
+    const detailEl = document.getElementById("itemDetail");
+    const name = nameEl.value.trim();
+    if (!name) return;
+    state.items.push({ id: uid(), board: activeBoard, name, method: methodEl.value, status: "todo", detail: detailEl.value.trim() });
+    saveState(state);
+    nameEl.value = "";
+    detailEl.value = "";
+    render();
+  });
+
+  document.getElementById("rerollBtn").addEventListener("click", () => {
+    focusPick = null;
+    const focus = pickFocus(state.items.filter(it => it.id !== state.focusState.id));
+    state.focusState.id = focus ? focus.id : null;
+    saveState(state);
+    render();
+  });
+
+  document.getElementById("pickBtn").addEventListener("click", () => {
+    const sel = document.getElementById("pickSelect");
+    if (sel.style.display === "none") {
+      const options = state.items.filter(it => it.status !== "done")
+        .map(it => '<option value="' + it.id + '">' + escapeHtml(BOARD_LABELS[it.board] + " — " + it.name) + "</option>");
+      sel.innerHTML = options.length ? "<option value=''>Pick an item…</option>" + options.join("") : "<option value=''>Nothing left!</option>";
+      sel.style.display = "block";
+    } else {
+      sel.style.display = "none";
+    }
+  });
+
+  document.getElementById("pickSelect").addEventListener("change", e => {
+    if (!e.target.value) return;
+    state.focusState.id = e.target.value;
+    saveState(state);
+    e.target.style.display = "none";
+    render();
+  });
+
+  document.getElementById("exportBtn").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "ffxiv-collection-board-" + weekKeyOf(new Date()) + ".json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById("importBtn").addEventListener("click", () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.onchange = () => {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(reader.result);
+          if (!validateState(parsed)) throw new Error("bad shape");
+          state = parsed;
+          for (const it of state.items) it.status = normalizeStatus(it.status);
+          saveState(state);
+          render();
+          showBurst("\u{1F4C5} Data imported");
+        } catch (err) {
+          alert("That file didn't look like a valid board export.");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    if (!confirm("Reset everything back to the starter checklists? This clears your progress and log.")) return;
+    if (typeof localStorage !== "undefined") localStorage.removeItem(STORAGE_KEY);
+    state = freshState();
+    saveState(state);
+    render();
+  });
+
+  render();
+}
+
+if (typeof document !== "undefined" && typeof module === "undefined") {
+  init();
+}
+
+/* Node test export */
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    STORAGE_KEY, STATUS_FLOW, STATUS_LABELS, METHOD_LABELS, BOARDS, BOARD_LABELS,
+    normalizeStatus, nextStatus, computeProgress, computeBoardProgresses,
+    weekKeyOf, pickFocus, makeLogEntry, validateState, freshState, seedItems
+  };
+}
+</script>
+</body>
+</html>
